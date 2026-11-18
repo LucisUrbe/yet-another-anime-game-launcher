@@ -78,13 +78,28 @@ export async function createWine(options: {
     });
   }
 
+  /** Games currently running in this prefix (begin/endSession). */
+  const liveSessions = new Set<string>();
+
+  function beginSession(id: string) {
+    liveSessions.add(id);
+  }
+
+  function endSession(id: string) {
+    liveSessions.delete(id);
+  }
+
   /**
-   * Let pending prefix changes (registry edits) settle before starting a game.
-   * With a shared prefix the wineserver may be serving other running games, so
-   * waiting for it to exit would block; its live state is already visible.
+   * Let pending prefix changes (registry edits) settle before starting a game,
+   * by waiting for the wineserver to exit so the game boots the prefix itself.
+   * hk4e depends on this: when it starts in an already running prefix, its
+   * anti-cheat installs a kernel driver Wine cannot load (it imports
+   * WDFLDR.SYS) and the game exits with "initDriver Failed [4,1114,0]".
+   * With a shared prefix, while other games run the wineserver never exits,
+   * so the wait is skipped; their live state already sees the edits.
    */
   async function settle() {
-    if (sharedPrefix) return;
+    if (sharedPrefix && liveSessions.size > 0) return;
     await waitUntilServerOff();
   }
 
@@ -232,6 +247,8 @@ reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\NVIDIA Corporation\\Global\\NGXCore" /v F
     waitUntilServerOff,
     killServer,
     settle,
+    beginSession,
+    endSession,
     waitForInstance,
     killInstance,
     sharedPrefix,

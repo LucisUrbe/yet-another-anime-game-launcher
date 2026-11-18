@@ -66,6 +66,8 @@ cd /d "${wine.toWinePath(gameDir)}"
   const markers = instanceMarkers(wine, server, gameDir);
   await mkdirp(resolve("./logs"));
   const yaaglDir = resolve("./");
+  // Marks the shared prefix as in use until this game's session ends.
+  wine.beginSession(server.id);
   try {
     yield ["setStateText", "GAME_RUNNING"];
     const logfile = resolve(`./logs/game_${Date.now()}.log`);
@@ -134,6 +136,8 @@ cd /d "${wine.toWinePath(gameDir)}"
       // The wrapper failed or was killed; the game itself may still run.
       await wine.waitForInstance(markers).catch(err => log(String(err)));
     }
+  } finally {
+    wine.endSession(server.id);
   }
 
   try {
