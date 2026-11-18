@@ -1,7 +1,7 @@
 import { FormControl, FormLabel, Box, Checkbox } from "@hope-ui/solid";
 import { createEffect, createSignal } from "solid-js";
 import { Locale } from "@locale";
-import { assertValueDefined, getKey, setKey } from "@utils";
+import { assertValueDefined, storeOf } from "@utils";
 import { Config, NOOP } from "./config-def";
 
 declare module "./config-def" {
@@ -18,7 +18,7 @@ export async function createLeftCmdConfig({
   locale: Locale;
 }) {
   try {
-    config.leftCmd = (await getKey("left_cmd")) == "true";
+    config.leftCmd = (await storeOf(config).getKey("left_cmd")) == "true";
   } catch {
     config.leftCmd = false; // default value
   }
@@ -33,7 +33,7 @@ export async function createLeftCmdConfig({
     }
     if (config.leftCmd == value()) return NOOP;
     config.leftCmd = value();
-    await setKey("left_cmd", config.leftCmd ? "true" : "false");
+    await storeOf(config).setKey("left_cmd", config.leftCmd ? "true" : "false");
     return NOOP;
   }
 

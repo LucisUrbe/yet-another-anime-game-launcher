@@ -1,7 +1,7 @@
 import { FormControl, FormLabel, Box, Checkbox } from "@hope-ui/solid";
 import { createEffect, createSignal } from "solid-js";
 import { Locale } from "@locale";
-import { assertValueDefined, getKey, setKey } from "@utils";
+import { assertValueDefined, storeOf } from "@utils";
 import { Config, NOOP } from "@config/config-def";
 
 declare module "@config/config-def" {
@@ -20,7 +20,7 @@ export async function createEnableHDRConfig({
   locale: Locale;
 }) {
   try {
-    config.hk4eEnableHDR = (await getKey(CONFIG_KEY)) == "true";
+    config.hk4eEnableHDR = (await storeOf(config).getKey(CONFIG_KEY)) == "true";
   } catch {
     config.hk4eEnableHDR = false;
   }
@@ -35,7 +35,10 @@ export async function createEnableHDRConfig({
     }
     if (config.hk4eEnableHDR == value()) return NOOP;
     config.hk4eEnableHDR = value();
-    await setKey(CONFIG_KEY, config.hk4eEnableHDR ? "true" : "false");
+    await storeOf(config).setKey(
+      CONFIG_KEY,
+      config.hk4eEnableHDR ? "true" : "false"
+    );
     return NOOP;
   }
 

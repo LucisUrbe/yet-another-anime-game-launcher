@@ -8,7 +8,7 @@ import {
 import { createEffect, createSignal } from "solid-js";
 import { Locale } from "../locale";
 import { Config, NOOP } from "./config-def";
-import { assertValueDefined, getKey, setKey } from "@utils";
+import { assertValueDefined, storeOf } from "@utils";
 
 declare module "./config-def" {
   interface Config {
@@ -24,7 +24,7 @@ export async function createProxyHostConfig({
   locale: Locale;
 }) {
   try {
-    config.proxyHost = await getKey("config_proxyHost");
+    config.proxyHost = await storeOf(config).getKey("config_proxyHost");
   } catch {
     config.proxyHost = "127.0.0.1:8080"; // default value
   }
@@ -39,7 +39,7 @@ export async function createProxyHostConfig({
     }
     if (config.proxyHost == value()) return NOOP;
     config.proxyHost = value();
-    await setKey("config_proxyHost", config.proxyHost);
+    await storeOf(config).setKey("config_proxyHost", config.proxyHost);
     return NOOP;
   }
 

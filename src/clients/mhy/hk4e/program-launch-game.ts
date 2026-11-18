@@ -16,6 +16,11 @@ import {
 import { Wine } from "../../../wine";
 import { Config } from "@config";
 import { putLocal, patchProgram, patchRevertProgram } from "../patch";
+import {
+  instanceMarkers,
+  launchScriptPath,
+  networkBlockScript,
+} from "../instance";
 import { CN_BLOCK_URL, OS_BLOCK_URL } from "../../secret";
 import hk4eHDRGlobalReg from "../../../constants/hk4e_hdr_os.reg?raw";
 import hk4eHDRCnReg from "../../../constants/hk4e_hdr_cn.reg?raw";
@@ -112,7 +117,7 @@ export async function* launchGameProgram({
   if (config.resolutionCustom) {
     await applyResolutionRegistry(wine, server, config);
   }
-  await wine.waitUntilServerOff();
+  await wine.settle();
 
   const cmd = `@echo off
 cd "%~dp0"
@@ -123,8 +128,9 @@ cd /d "${wine.toWinePath(gameDir)}"
 "${wine.toWinePath(
     join(gameDir, gameExecutable)
   )}" -platform_type CLOUD_THIRD_PARTY_PC -is_cloud 1`;
-  await writeFile(resolve("config.bat"), cmd);
+  await writeFile(launchScriptPath(server), cmd);
   yield* patchProgram(gameDir, wine, server, config);
+  const markers = instanceMarkers(wine, server, gameDir);
   await mkdirp(resolve("./logs"));
   const yaaglDir = resolve("./");
   try {
@@ -132,27 +138,10 @@ cd /d "${wine.toWinePath(gameDir)}"
     const logfile = resolve(`./logs/game_${Date.now()}.log`);
 
     if (config.blockNet) {
-      const tmpScriptPath = "/tmp/yaagl_network_block_script.sh";
       const blockUrl = server.id == "hk4e_global" ? OS_BLOCK_URL : CN_BLOCK_URL;
-
-      const commands = [
-        `#!/bin/sh`,
-
-        `HOSTS_FILE="/etc/hosts"`,
-        `ENTRY="0.0.0.0 ${blockUrl}"`,
-        `PAD_START="# Temporarily Added by Yaagl"`,
-        `PAD_END="# End of section"`,
-
-        `if ! grep -qF "$ENTRY" "$HOSTS_FILE"; then`,
-        `sudo bash -c "echo -e '$PAD_START\n$ENTRY\n$PAD_END' >> '/etc/hosts'"`,
-        `fi`,
-        `sleep 10`,
-        `sudo sed -i.bak "/$PAD_START/,/$PAD_END/d" "$HOSTS_FILE"`,
-
-        `rm ${tmpScriptPath}`,
-      ];
-
-      await writeFile(tmpScriptPath, commands.join("\n"));
+      const block = networkBlockScript(server, blockUrl, 10);
+      const tmpScriptPath = block.path;
+      await writeFile(tmpScriptPath, block.content);
       await exec(
         [
           "osascript",
@@ -169,7 +158,7 @@ cd /d "${wine.toWinePath(gameDir)}"
       config.steamPatch ? "C:\\windows\\system32\\steam.exe" : "cmd",
       config.steamPatch
         ? [wine.toWinePath(join(gameDir, gameExecutable))]
-        : ["/c", `${wine.toWinePath(resolve("./config.bat"))} `],
+        : ["/c", `${wine.toWinePath(launchScriptPath(server))} `],
       {
         MTL_HUD_ENABLED: config.metalHud ? "1" : "0",
         WINEDLLOVERRIDES: "",
@@ -198,10 +187,14 @@ cd /d "${wine.toWinePath(gameDir)}"
       },
       logfile
     );
-    await wine.waitUntilServerOff();
+    await wine.waitForInstance(markers);
   } catch (e: unknown) {
     // it seems game crashed?
     await log(String(e));
+    if (wine.sharedPrefix) {
+      // The wrapper failed or was killed; the game itself may still run.
+      await wine.waitForInstance(markers).catch(err => log(String(err)));
+    }
   }
 
   try {
@@ -217,7 +210,7 @@ cd /d "${wine.toWinePath(gameDir)}"
   }
 
   // await removeFile(resolve("bWh5cHJvdDJfcnVubmluZy5yZWcK.reg"));
-  await removeFile(resolve("config.bat"));
+  await removeFile(launchScriptPath(server));
   yield ["setStateText", "REVERT_PATCHING"];
   yield* patchRevertProgram(gameDir, wine, server, config);
 }

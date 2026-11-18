@@ -11,6 +11,7 @@ import {
   mkdirp,
   tar_extract_directory,
   removeFile,
+  IS_UNIFIED_BUILD,
 } from "./utils";
 import { CommonUpdateProgram } from "./common-update-ui";
 
@@ -18,7 +19,9 @@ const owner = "3shain";
 const repo = "yet-another-anime-game-launcher";
 
 export async function createUpdater(deps: { github: Github; aria2: Aria2 }) {
-  if (CURRENT_YAAGL_VERSION === "development") {
+  // The unified build is a local fork: upstream releases ship no unified
+  // bundle, and a single-game bundle must never replace it.
+  if (CURRENT_YAAGL_VERSION === "development" || IS_UNIFIED_BUILD) {
     return {
       latest: true,
     } as const;

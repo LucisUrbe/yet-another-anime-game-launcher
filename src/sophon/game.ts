@@ -13,11 +13,10 @@ import { Server } from "@constants";
 import { Locale } from "@locale";
 import {
   fileOrDirExists,
-  getKeyOrDefault,
+  gameStore,
   mkdirp,
   readFile,
   resolve,
-  setKey,
   writeFile,
 } from "@utils";
 import { getSophonClient } from "./client";
@@ -43,8 +42,9 @@ export function canPlay(action: GameAction | undefined): boolean {
 
 export async function createSophonGame(server: Server, locale: Locale) {
   const downloader = await createSophonSettings();
+  const store = gameStore(server.id);
   const [installDir, setInstallDir] = createSignal(
-    await getKeyOrDefault("game_install_dir", "")
+    await store.getKeyOrDefault("game_install_dir", "")
   );
   const [action, setAction] = createSignal<GameAction>();
   const [loading, setLoading] = createSignal(Boolean(installDir()));
@@ -105,7 +105,7 @@ export async function createSophonGame(server: Server, locale: Locale) {
   async function selectDirectory(directory: string) {
     if (operationRunning())
       throw new Error("A game operation is still running");
-    await setKey("game_install_dir", directory);
+    await store.setKey("game_install_dir", directory);
     setInstallDir(directory);
     setDismissed(false);
     await refresh();

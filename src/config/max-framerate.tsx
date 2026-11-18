@@ -10,12 +10,7 @@ import {
 } from "@hope-ui/solid";
 import { createEffect, createSignal } from "solid-js";
 import { Locale } from "@locale";
-import {
-  assertValueDefined,
-  getDisplayRefreshRate,
-  getKey,
-  setKey,
-} from "@utils";
+import { assertValueDefined, getDisplayRefreshRate, storeOf } from "@utils";
 import { Config, NOOP } from "./config-def";
 
 declare module "./config-def" {
@@ -38,13 +33,14 @@ export async function createMaxFrameRateConfig({
   const defaultRefreshRate = String(await getDisplayRefreshRate());
 
   try {
-    config.maxFrameRateCustom = (await getKey(CONFIG_KEY_CUSTOM)) == "true";
+    config.maxFrameRateCustom =
+      (await storeOf(config).getKey(CONFIG_KEY_CUSTOM)) == "true";
   } catch {
     config.maxFrameRateCustom = false;
   }
 
   try {
-    config.maxFrameRate = await getKey(CONFIG_KEY_VALUE);
+    config.maxFrameRate = await storeOf(config).getKey(CONFIG_KEY_VALUE);
   } catch {
     config.maxFrameRate = defaultRefreshRate;
   }
@@ -60,7 +56,7 @@ export async function createMaxFrameRateConfig({
     }
     if (config.maxFrameRateCustom == custom()) return NOOP;
     config.maxFrameRateCustom = custom();
-    await setKey(
+    await storeOf(config).setKey(
       CONFIG_KEY_CUSTOM,
       config.maxFrameRateCustom ? "true" : "false"
     );
@@ -75,7 +71,7 @@ export async function createMaxFrameRateConfig({
     }
     if (config.maxFrameRate == value()) return NOOP;
     config.maxFrameRate = value();
-    await setKey(CONFIG_KEY_VALUE, config.maxFrameRate);
+    await storeOf(config).setKey(CONFIG_KEY_VALUE, config.maxFrameRate);
     return NOOP;
   }
 

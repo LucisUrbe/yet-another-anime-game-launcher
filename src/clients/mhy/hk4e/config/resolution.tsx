@@ -12,7 +12,7 @@ import {
 } from "@hope-ui/solid";
 import { createEffect, createSignal } from "solid-js";
 import { Locale } from "@locale";
-import { assertValueDefined, getKey, setKey } from "@utils";
+import { assertValueDefined, storeOf } from "@utils";
 import { Config, NOOP } from "@config/config-def";
 
 declare module "@config/config-def" {
@@ -66,7 +66,8 @@ async function createCustom({
   locale: Locale;
 }) {
   try {
-    config.resolutionCustom = (await getKey(CONFIG_KEY_CUSTOM)) == "true";
+    config.resolutionCustom =
+      (await storeOf(config).getKey(CONFIG_KEY_CUSTOM)) == "true";
   } catch {
     config.resolutionCustom = false; // default value
   }
@@ -81,7 +82,10 @@ async function createCustom({
     }
     if (config.resolutionCustom == value()) return NOOP;
     config.resolutionCustom = value();
-    await setKey(CONFIG_KEY_CUSTOM, config.resolutionCustom ? "true" : "false");
+    await storeOf(config).setKey(
+      CONFIG_KEY_CUSTOM,
+      config.resolutionCustom ? "true" : "false"
+    );
     return NOOP;
   }
 
@@ -113,7 +117,7 @@ async function createWidth({
   locale: Locale;
 }) {
   try {
-    config.resolutionWidth = await getKey(CONFIG_KEY_WIDTH);
+    config.resolutionWidth = await storeOf(config).getKey(CONFIG_KEY_WIDTH);
   } catch {
     config.resolutionWidth = "1920"; // default value
   }
@@ -128,7 +132,7 @@ async function createWidth({
     }
     if (config.resolutionWidth == value()) return NOOP;
     config.resolutionWidth = value();
-    await setKey(CONFIG_KEY_WIDTH, config.resolutionWidth);
+    await storeOf(config).setKey(CONFIG_KEY_WIDTH, config.resolutionWidth);
     return NOOP;
   }
 
@@ -157,7 +161,7 @@ async function createHeight({
   locale: Locale;
 }) {
   try {
-    config.resolutionHeight = await getKey(CONFIG_KEY_HEIGHT);
+    config.resolutionHeight = await storeOf(config).getKey(CONFIG_KEY_HEIGHT);
   } catch {
     config.resolutionHeight = "1920"; // default value
   }
@@ -172,7 +176,7 @@ async function createHeight({
     }
     if (config.resolutionHeight == value()) return NOOP;
     config.resolutionHeight = value();
-    await setKey(CONFIG_KEY_HEIGHT, config.resolutionHeight);
+    await storeOf(config).setKey(CONFIG_KEY_HEIGHT, config.resolutionHeight);
     return NOOP;
   }
 

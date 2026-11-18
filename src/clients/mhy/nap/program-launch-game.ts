@@ -17,6 +17,11 @@ import {
 import { Wine } from "../../../wine";
 import { Config } from "@config";
 import { putLocal, patchProgram, patchRevertProgram } from "../patch";
+import {
+  instanceMarkers,
+  launchScriptPath,
+  networkBlockScript,
+} from "../instance";
 import { NAP_CN_BLOCK_URL, NAP_OS_BLOCK_URL } from "../../secret";
 import { gt } from "semver";
 
@@ -56,8 +61,9 @@ copy "${wine.toWinePath(
   )}" "%WINDIR%\\system32\\"
 cd /d "${wine.toWinePath(gameDir)}"
 "${wine.toWinePath(join(gameDir, gameExecutable))}" ${args.join(" ")}`;
-  await writeFile(resolve("config.bat"), cmd);
+  await writeFile(launchScriptPath(server), cmd);
   yield* patchProgram(gameDir, wine, server, config);
+  const markers = instanceMarkers(wine, server, gameDir);
   await mkdirp(resolve("./logs"));
   const yaaglDir = resolve("./");
   try {
@@ -65,28 +71,11 @@ cd /d "${wine.toWinePath(gameDir)}"
     const logfile = resolve(`./logs/game_${Date.now()}.log`);
 
     if (config.blockNet) {
-      const tmpScriptPath = "/tmp/yaagl_network_block_script.sh";
       const blockUrl =
         server.id == "nap_global" ? NAP_OS_BLOCK_URL : NAP_CN_BLOCK_URL;
-
-      const commands = [
-        `#!/bin/sh`,
-
-        `HOSTS_FILE="/etc/hosts"`,
-        `ENTRY="0.0.0.0 ${blockUrl}"`,
-        `PAD_START="# Temporarily Added by Yaagl"`,
-        `PAD_END="# End of section"`,
-
-        `if ! grep -qF "$ENTRY" "$HOSTS_FILE"; then`,
-        `sudo bash -c "echo -e '$PAD_START\n$ENTRY\n$PAD_END' >> '/etc/hosts'"`,
-        `fi`,
-        `sleep 20`,
-        `sudo sed -i.bak "/$PAD_START/,/$PAD_END/d" "$HOSTS_FILE"`,
-
-        `rm ${tmpScriptPath}`,
-      ];
-
-      await writeFile(tmpScriptPath, commands.join("\n"));
+      const block = networkBlockScript(server, blockUrl, 20);
+      const tmpScriptPath = block.path;
+      await writeFile(tmpScriptPath, block.content);
       await exec(
         [
           "osascript",
@@ -108,7 +97,7 @@ cd /d "${wine.toWinePath(gameDir)}"
             wine.toWinePath(join(gameDir, gameExecutable)),
             ...(useD3D12 ? ["-use-d3d12"] : []),
           ]
-        : ["/c", `${wine.toWinePath(resolve("./config.bat"))} `],
+        : ["/c", `${wine.toWinePath(launchScriptPath(server))} `],
       {
         MTL_HUD_ENABLED: config.metalHud ? "1" : "0",
         WINEDLLOVERRIDES: "",
@@ -137,10 +126,14 @@ cd /d "${wine.toWinePath(gameDir)}"
       },
       logfile
     );
-    await wine.waitUntilServerOff();
+    await wine.waitForInstance(markers);
   } catch (e: unknown) {
     // it seems game crashed?
     await log(String(e));
+    if (wine.sharedPrefix) {
+      // The wrapper failed or was killed; the game itself may still run.
+      await wine.waitForInstance(markers).catch(err => log(String(err)));
+    }
   }
 
   try {
@@ -152,7 +145,7 @@ cd /d "${wine.toWinePath(gameDir)}"
   }
 
   // await removeFile(resolve("bWh5cHJvdDJfcnVubmluZy5yZWcK.reg"));
-  await removeFile(resolve("config.bat"));
+  await removeFile(launchScriptPath(server));
   yield ["setStateText", "REVERT_PATCHING"];
   yield* patchRevertProgram(gameDir, wine, server, config);
 }
@@ -175,11 +168,18 @@ async function fixWebview(wine: Wine, server: Server) {
   ];
 
   try {
-    await wine.exec("reg", ["query", key], {}, resolve("fix_webview.log"));
+    await wine.exec(
+      "reg",
+      ["query", key],
+      {},
+      resolve(`fix_webview_${server.id}.log`)
+    );
 
     // the output contains malformed CJK characters
     const decoder = new TextDecoder("utf-8", { fatal: false });
-    const output = decoder.decode(await readBinary(resolve("fix_webview.log")));
+    const output = decoder.decode(
+      await readBinary(resolve(`fix_webview_${server.id}.log`))
+    );
 
     for (let line of output.split("\n")) {
       line = line.trim();
@@ -192,10 +192,13 @@ async function fixWebview(wine: Wine, server: Server) {
     return;
   }
 
-  await writeBinary(resolve("fix_webview.reg"), utf16le(reg.join("\r\n")));
+  await writeBinary(
+    resolve(`fix_webview_${server.id}.reg`),
+    utf16le(reg.join("\r\n"))
+  );
   await wine.exec(
     "reg",
-    ["import", `${wine.toWinePath(resolve("./fix_webview.reg"))}`],
+    ["import", `${wine.toWinePath(resolve(`./fix_webview_${server.id}.reg`))}`],
     {},
     "/dev/null"
   );
@@ -213,10 +216,15 @@ async function revertResolutionRegistry(wine: Wine, server: Server) {
 
   try {
     const reg = [`Windows Registry Editor Version 5.00`, ``, `[${key}]`];
-    await wine.exec("reg", ["query", key], {}, resolve("fix_resolution.log"));
+    await wine.exec(
+      "reg",
+      ["query", key],
+      {},
+      resolve(`fix_resolution_${server.id}.log`)
+    );
     const decoder = new TextDecoder("utf-8", { fatal: false });
     const output = decoder.decode(
-      await readBinary(resolve("fix_resolution.log"))
+      await readBinary(resolve(`fix_resolution_${server.id}.log`))
     );
 
     for (let line of output.split("\r\n")) {
@@ -233,12 +241,15 @@ async function revertResolutionRegistry(wine: Wine, server: Server) {
 
     if (reg.length > 3) {
       await writeBinary(
-        resolve("fix_resolution.reg"),
+        resolve(`fix_resolution_${server.id}.reg`),
         utf16le(reg.join("\r\n"))
       );
       await wine.exec(
         "reg",
-        ["import", `${wine.toWinePath(resolve("./fix_resolution.reg"))}`],
+        [
+          "import",
+          `${wine.toWinePath(resolve(`./fix_resolution_${server.id}.reg`))}`,
+        ],
         {},
         "/dev/null"
       );

@@ -1,7 +1,7 @@
 import { FormControl, FormLabel, Box, Checkbox } from "@hope-ui/solid";
 import { createEffect, createSignal } from "solid-js";
 import { Locale } from "@locale";
-import { assertValueDefined, getKey, setKey } from "@utils";
+import { assertValueDefined, storeOf } from "@utils";
 import { Config, NOOP } from "@config/config-def";
 
 declare module "@config/config-def" {
@@ -20,7 +20,7 @@ export default async function ({
   locale: Locale;
 }) {
   try {
-    config.patchOff = (await getKey(CONFIG_KEY)) == "true";
+    config.patchOff = (await storeOf(config).getKey(CONFIG_KEY)) == "true";
   } catch {
     config.patchOff = false; // default value
   }
@@ -35,7 +35,10 @@ export default async function ({
     }
     if (config.patchOff == value()) return NOOP;
     config.patchOff = value();
-    await setKey(CONFIG_KEY, config.patchOff ? "true" : "false");
+    await storeOf(config).setKey(
+      CONFIG_KEY,
+      config.patchOff ? "true" : "false"
+    );
     return NOOP;
   }
 

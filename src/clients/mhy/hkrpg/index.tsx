@@ -4,11 +4,12 @@ import { Locale } from "@locale";
 import { Config } from "@config";
 import { Aria2 } from "@aria2";
 import { Wine } from "@wine";
-import { getKey } from "@utils";
+import { gameStore } from "@utils";
 import { createSophonGame } from "../../../sophon/game";
 import { launchGameProgram } from "./program-launch-game";
 import { getGameArtwork } from "../artwork";
 import { patchRevertProgram } from "../patch";
+import { instanceMarkers } from "../instance";
 import {
   checkAndDownloadDXMT,
   checkAndDownloadReshade,
@@ -33,6 +34,10 @@ export async function createHKRPGChannelClient({
   return {
     ...game,
     sophon: game,
+    store: gameStore(server.id),
+    gameId: server.id,
+    forceClose: () =>
+      wine.killInstance(instanceMarkers(wine, server, game.installDir())),
     uiContent: await getGameArtwork(locale, server, icon),
     async *launch(config: Config) {
       if (!(await game.canLaunch())) return;
@@ -53,7 +58,9 @@ export async function createHKRPGChannelClient({
     },
     async *init(config: Config) {
       if (!game.installDir()) return;
-      const patched = await getKey("patched").catch(() => "");
+      const patched = await gameStore(server.id)
+        .getKey("patched")
+        .catch(() => "");
       if (patched) {
         try {
           yield* patchRevertProgram(game.installDir(), wine, server, config);

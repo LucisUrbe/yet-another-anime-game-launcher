@@ -160,3 +160,68 @@ body {
   color: #3182ce;
   text-decoration: underline;
 }
+
+/* Unified build: game switcher rail floating over the active launcher. */
+.game-rail {
+  position: fixed;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 18px;
+  background: rgba(16, 18, 24, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
+}
+
+.game-rail-item {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s, border-color 0.15s, transform 0.15s;
+}
+
+.game-rail-item:hover {
+  opacity: 1;
+  transform: scale(1.04);
+}
+
+.game-rail-item.active {
+  opacity: 1;
+  border-color: rgba(255, 255, 255, 0.9);
+}
+
+.game-rail-item:focus-visible {
+  outline: 2px solid #ffd166;
+  outline-offset: 2px;
+}
+
+.game-rail-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+  pointer-events: none;
+}
+
+.game-rail-running {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #3ddc84;
+  border: 2px solid rgba(16, 18, 24, 0.9);
+}

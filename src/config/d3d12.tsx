@@ -1,7 +1,7 @@
 import { Box, Checkbox, FormControl, FormLabel } from "@hope-ui/solid";
 import { createEffect, createSignal } from "solid-js";
 import type { Locale } from "@locale";
-import { assertValueDefined, getKey, setKey } from "@utils";
+import { assertValueDefined, storeOf } from "@utils";
 import { NOOP } from "@config/config-def";
 import type { Config } from "@config/config-def";
 import type { Wine } from "@wine";
@@ -27,7 +27,7 @@ export async function createD3D12({
   supportsD3d12?: () => boolean;
 }) {
   try {
-    config.useD3D12 = (await getKey(CONFIG_KEY)) == "true";
+    config.useD3D12 = (await storeOf(config).getKey(CONFIG_KEY)) == "true";
   } catch {
     config.useD3D12 = false;
   }
@@ -42,7 +42,10 @@ export async function createD3D12({
     }
     if (config.useD3D12 == value()) return NOOP;
     config.useD3D12 = value();
-    await setKey(CONFIG_KEY, config.useD3D12 ? "true" : "false");
+    await storeOf(config).setKey(
+      CONFIG_KEY,
+      config.useD3D12 ? "true" : "false"
+    );
     return NOOP;
   }
 

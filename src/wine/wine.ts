@@ -11,14 +11,23 @@ import {
   stats,
   resolve,
   writeFile,
+  removeFileIfExists,
+  wait,
 } from "@utils";
 import { dirname, join } from "path-browserify";
 import { WineDistribution } from "./distro";
+import { matchInstancePids } from "./instance";
 
 export async function createWine(options: {
   prefix: string;
   distro: WineDistribution;
+  /**
+   * Several games run in this prefix at the same time (unified build). Waits
+   * and kills then target one game's processes instead of the wineserver.
+   */
+  sharedPrefix?: boolean;
 }) {
+  const sharedPrefix = options.sharedPrefix === true;
   const loaderBin = await getCorrectWineBinary();
 
   async function cmd(command: string, args: string[]) {
@@ -73,6 +82,65 @@ export async function createWine(options: {
     return await unixExec2([join(dirname(loaderBin), "wineserver"), "-k"], {
       ...getEnvironmentVariables(),
     });
+  }
+
+  /**
+   * Let pending prefix changes (registry edits) settle before starting a game.
+   * With a shared prefix the wineserver may be serving other running games, so
+   * waiting for it to exit would block; its live state is already visible.
+   */
+  async function settle() {
+    if (sharedPrefix) return;
+    await waitUntilServerOff();
+  }
+
+  async function listInstancePids(markers: string[]) {
+    // Polled while a game runs: bypass exec() so the log is not flooded.
+    const { stdOut, exitCode } = await Neutralino.os.execCommand(
+      "/bin/ps -axww -o pid=,command="
+    );
+    if (exitCode !== 0) throw new Error(`ps failed with code ${exitCode}`);
+    return matchInstancePids(stdOut, markers);
+  }
+
+  /** Wait until the game session identified by `markers` has fully exited. */
+  async function waitForInstance(markers: string[], pollMs = 2000) {
+    if (!sharedPrefix) {
+      await waitUntilServerOff();
+      return;
+    }
+    // Give a launcher process a moment to spawn the real game.
+    await wait(pollMs);
+    while ((await listInstancePids(markers)).length > 0) {
+      await wait(pollMs);
+    }
+  }
+
+  /** Force close one game session, leaving other games in the prefix alone. */
+  async function killInstance(markers: string[]) {
+    if (!sharedPrefix) {
+      await killServer();
+      return;
+    }
+    const pids = await listInstancePids(markers);
+    await log(`Force closing instance [${markers.join(" | ")}]: ${pids}`);
+    if (pids.length > 0) {
+      await unixExec(["kill", "-9", ...pids.map(String)]).catch(e =>
+        log(String(e))
+      );
+    }
+  }
+
+  async function runRegistryScript(cmd: string) {
+    // Unique name: games starting concurrently must not clobber each other.
+    const script = resolve(`winedrv_config_${generateRandomString(8)}.bat`);
+    await writeFile(script, cmd);
+    try {
+      await exec("cmd", ["/c", `${toWinePath(script)}`], {}, "/dev/null");
+    } finally {
+      await removeFileIfExists(script);
+    }
+    await settle();
   }
 
   function toWinePath(absPath: string) {
@@ -132,14 +200,7 @@ reg add "HKEY_CURRENT_USER\\Software\\Wine\\Mac Driver" /v LeftCommandIsCtrl /t 
       props.leftCmd ? "y" : "n"
     } /f
 `;
-    await writeFile(resolve("winedrv_config.bat"), cmd);
-    await exec(
-      "cmd",
-      ["/c", `${toWinePath(resolve("./winedrv_config.bat"))}`],
-      {},
-      "/dev/null"
-    );
-    await waitUntilServerOff();
+    await runRegistryScript(cmd);
   }
 
   async function setNVExtension() {
@@ -149,14 +210,7 @@ reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\NVIDIA Corporation\\Global" /v "{41FCC608
 reg add "HKEY_LOCAL_MACHINE\\SYSTEM\\ControlSet001\\Services\\nvlddmkm" /v "{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}" /t REG_BINARY /d 1 /f
 reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\NVIDIA Corporation\\Global\\NGXCore" /v FullPath /t REG_SZ /d "C:\\Windows\\System32" /f
 `;
-    await writeFile(resolve("winedrv_config.bat"), cmd);
-    await exec(
-      "cmd",
-      ["/c", `${toWinePath(resolve("./winedrv_config.bat"))}`],
-      {},
-      "/dev/null"
-    );
-    await waitUntilServerOff();
+    await runRegistryScript(cmd);
   }
 
   return {
@@ -164,6 +218,10 @@ reg add "HKEY_LOCAL_MACHINE\\SOFTWARE\\NVIDIA Corporation\\Global\\NGXCore" /v F
     exec2,
     waitUntilServerOff,
     killServer,
+    settle,
+    waitForInstance,
+    killInstance,
+    sharedPrefix,
     cmd,
     toWinePath,
     prefix: options.prefix,

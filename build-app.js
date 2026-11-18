@@ -69,6 +69,13 @@ const { IconIcns } = require("@shockpkg/icon-encoder");
       appDistributionName = config.cli.binaryName + " ZZZ";
       config.modes.window.icon = "/src/icons/ZZZ_Bang.cr.png";
       break;
+    case "unified":
+      // One launcher for hk4e_cn, hkrpg_cn and nap_cn on a shared Wine.
+      includeSophon = true;
+      bundleId = config.applicationId + ".unified";
+      appDistributionName = config.cli.binaryName + " Unified";
+      config.modes.window.title = "Yaagl Unified";
+      break;
     default:
       throw new Error("YAAGL_CHANNEL_CLIENT env required");
   }

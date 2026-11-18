@@ -45,7 +45,18 @@ import { createD3D12 } from "./d3d12";
 import { createMaxFrameRateConfig } from "./max-framerate";
 import createLocaleConfig from "./ui-locale";
 import createFPSUnlock from "./fps-unlock";
-import { exec2, exit, getKeyOrDefault, resolve, setKey } from "../utils";
+import {
+  bindStore,
+  exec2,
+  exit,
+  getKeyOrDefault,
+  globalStore,
+  IS_UNIFIED_BUILD,
+  KeyStore,
+  resolve,
+  scopedStore,
+  setKey,
+} from "../utils";
 import { createSignal, For, JSXElement, Show } from "solid-js";
 import createReShade from "./reshade";
 import { createProxyEnabledConfig } from "@config/proxy-enabled";
@@ -64,8 +75,27 @@ export const RECOMMENDED_WINE_TAG = "11.0-1-crossover-signed-experimental";
 export const RECOMMENDED_WINE_URL =
   "https://github.com/yaagl/anime-game-wine/releases/download/wine-crossover-11.0-1-signed/wine-crossover-11.0-1-osx64-signed.tar.xz";
 
-export async function applyRecommendedSettings() {
-  const channelClient = String(import.meta.env["YAAGL_CHANNEL_CLIENT"]);
+/** Games hosted by the unified build, keyed by `server.id`. */
+export const UNIFIED_GAME_IDS = ["hk4e_cn", "hkrpg_cn", "nap_cn"] as const;
+
+/**
+ * Apply recommended Wine and per-game settings. Without a target this covers
+ * the build's own game, or every hosted game in the unified build.
+ */
+export async function applyRecommendedSettings(target?: {
+  store: KeyStore;
+  game: string;
+}) {
+  const targets = target
+    ? [target]
+    : IS_UNIFIED_BUILD
+    ? UNIFIED_GAME_IDS.map(game => ({ store: scopedStore(game), game }))
+    : [
+        {
+          store: globalStore,
+          game: String(import.meta.env["YAAGL_CHANNEL_CLIENT"]),
+        },
+      ];
   const currentWineState = await getKeyOrDefault("wine_state", "");
   const currentWineTag = await getKeyOrDefault("wine_tag", "");
 
@@ -75,14 +105,16 @@ export async function applyRecommendedSettings() {
     await setKey("wine_update_url", RECOMMENDED_WINE_URL);
   }
 
-  if (channelClient.startsWith("hk4e") || channelClient.startsWith("nap")) {
-    await setKey("config_steam_patch", "true");
-    await setKey("config_timeout_fix", "true");
-    await setKey("config_block_net", "false");
-  }
+  for (const { store, game } of targets) {
+    if (game.startsWith("hk4e") || game.startsWith("nap")) {
+      await store.setKey("config_steam_patch", "true");
+      await store.setKey("config_timeout_fix", "true");
+      await store.setKey("config_block_net", "false");
+    }
 
-  if (channelClient.startsWith("hkrpg")) {
-    await setKey("config_block_net", "true");
+    if (game.startsWith("hkrpg")) {
+      await store.setKey("config_block_net", "true");
+    }
   }
 }
 
@@ -132,10 +164,16 @@ export async function createConfiguration({
   supportsD3d12 = false,
   sophon,
   onCheckUpdate,
+  store = globalStore,
+  game = String(import.meta.env["YAAGL_CHANNEL_CLIENT"]),
 }: {
   wine: Wine;
   locale: Locale;
   gameInstallDir: () => string;
+  /** Storage for this game's settings (scoped in the unified build). */
+  store?: KeyStore;
+  /** Game/channel id used for recommended settings. */
+  game?: string;
   configForChannelClient: (
     locale: Locale,
     config: Partial<Config>
@@ -144,7 +182,7 @@ export async function createConfiguration({
   sophon?: SophonGame;
   onCheckUpdate: () => void;
 }) {
-  const config: Partial<Config> = {};
+  const config: Partial<Config> = bindStore({}, store);
   const [WD] = await createWineDistroConfig({
     locale,
     config,
@@ -284,7 +322,7 @@ export async function createConfiguration({
             <Button
               {...actionBtnStyle}
               onClick={async () => {
-                await applyRecommendedSettings();
+                await applyRecommendedSettings({ store, game });
 
                 notificationService.show({
                   status: "success",

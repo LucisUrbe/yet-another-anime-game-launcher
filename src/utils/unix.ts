@@ -141,3 +141,18 @@ export function getFreeSpace(path: string, unit: "m" | "k" | "g") {
     return parseInt(output.stdOut.split("\n")[0]);
   });
 }
+
+/**
+ * Copy only when the destination is missing or differs. Avoids rewriting files
+ * that another running game may have mapped (e.g. in a shared Wine prefix).
+ */
+export async function cpIfChanged(source: string, destination: string) {
+  return await exec([
+    "/bin/sh",
+    "-c",
+    'cmp -s "$1" "$2" || cp -p "$1" "$2"',
+    "yaagl-cp",
+    resolve(source),
+    resolve(destination),
+  ]);
+}

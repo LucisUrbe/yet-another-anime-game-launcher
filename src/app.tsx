@@ -12,6 +12,7 @@ import {
   exit,
   open,
   rawString,
+  IS_UNIFIED_BUILD,
 } from "./utils";
 import { createAria2Retry } from "./aria2";
 import {
@@ -139,18 +140,31 @@ export async function createApp() {
     const wine = await createWine({
       prefix: prefixPath,
       distro: wineStatus.wineDistribution,
+      // The unified build runs every game in this one prefix, concurrently.
+      sharedPrefix: IS_UNIFIED_BUILD,
     });
-    MainApp = await createLauncher({
-      wine,
-      locale,
-      github,
-      channelClient: await createClient({
+    if (IS_UNIFIED_BUILD) {
+      const { createUnifiedLauncher } = await import("./launcher/unified");
+      MainApp = await createUnifiedLauncher({
         wine,
         aria2,
         locale,
-      }),
-      onCheckUpdate,
-    });
+        github,
+        onCheckUpdate,
+      });
+    } else {
+      MainApp = await createLauncher({
+        wine,
+        locale,
+        github,
+        channelClient: await createClient({
+          wine,
+          aria2,
+          locale,
+        }),
+        onCheckUpdate,
+      });
+    }
   } else {
     MainApp = await createWineInstallProgram({
       aria2,

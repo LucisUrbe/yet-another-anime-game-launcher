@@ -126,3 +126,13 @@ export function utf16le(text: string) {
 
   return buffer;
 }
+
+/** Run async sections one at a time (FIFO). */
+export function createMutex() {
+  let tail: Promise<unknown> = Promise.resolve();
+  return function run<T>(section: () => Promise<T>): Promise<T> {
+    const result = tail.then(section, section);
+    tail = result.catch(() => undefined);
+    return result;
+  };
+}

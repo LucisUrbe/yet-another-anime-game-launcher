@@ -1,7 +1,7 @@
 import { FormControl, FormLabel, Box, Checkbox } from "@hope-ui/solid";
 import { createEffect, createSignal } from "solid-js";
 import { Locale } from "@locale";
-import { assertValueDefined, getCPUInfo, getKey, setKey } from "@utils";
+import { assertValueDefined, getCPUInfo, storeOf } from "@utils";
 import { Config, NOOP } from "@config/config-def";
 
 declare module "@config/config-def" {
@@ -20,7 +20,7 @@ export async function createWorkaround3Config({
   locale: Locale;
 }) {
   try {
-    config.workaround3 = (await getKey(CONFIG_KEY)) == "true";
+    config.workaround3 = (await storeOf(config).getKey(CONFIG_KEY)) == "true";
   } catch {
     const { model } = await getCPUInfo();
     config.workaround3 =
@@ -41,7 +41,10 @@ export async function createWorkaround3Config({
     }
     if (config.workaround3 == value()) return NOOP;
     config.workaround3 = value();
-    await setKey(CONFIG_KEY, config.workaround3 ? "true" : "false");
+    await storeOf(config).setKey(
+      CONFIG_KEY,
+      config.workaround3 ? "true" : "false"
+    );
     return NOOP;
   }
 

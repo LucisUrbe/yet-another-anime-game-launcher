@@ -102,14 +102,23 @@ export async function createLauncher({
     dismissPredownload,
     predownloadVersion,
     createConfig,
+    store,
+    gameId,
+    forceClose,
   },
   onCheckUpdate,
+  active = () => true,
+  onRunningChange,
 }: {
   wine: Wine;
   locale: Locale;
   github: Github;
   channelClient: ChannelClient;
   onCheckUpdate: () => void;
+  /** Whether this launcher is the visible one (unified build hosts several). */
+  active?: () => boolean;
+  /** Reports whether this game is currently running. */
+  onRunningChange?: (running: boolean) => void;
 }) {
   async function reportError(error: unknown) {
     if (sophon)
@@ -124,6 +133,8 @@ export async function createLauncher({
     supportsD3d12,
     sophon,
     onCheckUpdate,
+    store,
+    game: gameId,
   });
 
   const { selectPath } = await createGameInstallationDirectorySanitizer({
@@ -152,6 +163,10 @@ export async function createLauncher({
       locale,
       onError: sophon ? reportError : undefined,
     });
+
+    const gameRunning = () =>
+      programBusy() && statusText() === locale.get("GAME_RUNNING");
+    createEffect(() => onRunningChange?.(gameRunning()));
 
     const { isOpen, onOpen, onClose } = createDisclosure();
     const details = createDisclosure();
@@ -247,7 +262,7 @@ export async function createLauncher({
           "background-image": background ? `url(${background})` : undefined,
         }}
       >
-        <Show when={background_video}>
+        <Show when={false}>
           <video
             ref={video}
             class="background-video"
@@ -350,13 +365,15 @@ export async function createLauncher({
                   >
                     {statusText()}
                   </h3>
-                  <Show when={statusText() === locale.get("GAME_RUNNING")}>
+                  <Show when={gameRunning()}>
                     <Button
                       size="xs"
                       colorScheme="danger"
                       borderRadius={8}
                       flexShrink={0}
-                      onClick={() => wine.killServer().catch(() => undefined)}
+                      onClick={() =>
+                        (forceClose ?? wine.killServer)().catch(() => undefined)
+                      }
                     >
                       {locale.get("FORCE_CLOSE")}
                     </Button>
@@ -413,7 +430,10 @@ export async function createLauncher({
               <Popover
                 placement="top"
                 opened={
-                  showPredownloadPrompt() && !isOpen() && !installDialog()
+                  active() &&
+                  showPredownloadPrompt() &&
+                  !isOpen() &&
+                  !installDialog()
                 }
                 onClose={dismissPredownload}
                 closeOnBlur={true}

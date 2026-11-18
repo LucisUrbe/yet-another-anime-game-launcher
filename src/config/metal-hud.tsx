@@ -1,7 +1,7 @@
 import { FormControl, FormLabel, Box, Checkbox } from "@hope-ui/solid";
 import { createEffect, createSignal } from "solid-js";
 import { Locale } from "@locale";
-import { assertValueDefined, getKey, setKey } from "@utils";
+import { assertValueDefined, storeOf } from "@utils";
 import { Config, NOOP } from "./config-def";
 
 declare module "./config-def" {
@@ -18,7 +18,8 @@ export async function createMetalHUDConfig({
   locale: Locale;
 }) {
   try {
-    config.metalHud = (await getKey("config_metalHud")) == "true";
+    config.metalHud =
+      (await storeOf(config).getKey("config_metalHud")) == "true";
   } catch {
     config.metalHud = false; // default value
   }
@@ -33,7 +34,10 @@ export async function createMetalHUDConfig({
     }
     if (config.metalHud == value()) return NOOP;
     config.metalHud = value();
-    await setKey("config_metalHud", config.metalHud ? "true" : "false");
+    await storeOf(config).setKey(
+      "config_metalHud",
+      config.metalHud ? "true" : "false"
+    );
     return NOOP;
   }
 

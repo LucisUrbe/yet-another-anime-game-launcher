@@ -2,7 +2,7 @@ import { Box, Checkbox, FormControl, FormLabel } from "@hope-ui/solid";
 import { createEffect, createSignal } from "solid-js";
 import { Locale } from "../locale";
 import { Config, NOOP } from "./config-def";
-import { assertValueDefined, getKey, setKey } from "@utils";
+import { assertValueDefined, storeOf } from "@utils";
 
 declare module "./config-def" {
   interface Config {
@@ -18,7 +18,8 @@ export async function createProxyEnabledConfig({
   locale: Locale;
 }) {
   try {
-    config.proxyEnabled = (await getKey("config_proxyEnabled")) == "true";
+    config.proxyEnabled =
+      (await storeOf(config).getKey("config_proxyEnabled")) == "true";
   } catch {
     config.proxyEnabled = false; // default value
   }
@@ -33,7 +34,10 @@ export async function createProxyEnabledConfig({
     }
     if (config.proxyEnabled == value()) return NOOP;
     config.proxyEnabled = value();
-    await setKey("config_proxyEnabled", config.proxyEnabled ? "true" : "false");
+    await storeOf(config).setKey(
+      "config_proxyEnabled",
+      config.proxyEnabled ? "true" : "false"
+    );
     return NOOP;
   }
 
