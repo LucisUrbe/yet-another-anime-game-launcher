@@ -44,10 +44,7 @@ export async function createWine(options: {
       program == "copy"
         ? [loaderBin, "cmd", "/c", program, ...args]
         : [loaderBin, program, ...args],
-      {
-        ...getEnvironmentVariables(),
-        ...(env ?? {}),
-      },
+      withEnvironmentVariables(env),
       false,
       log_file
     );
@@ -63,10 +60,7 @@ export async function createWine(options: {
       program == "copy"
         ? [loaderBin, "cmd", "/c", program, ...args]
         : [loaderBin, program, ...args],
-      {
-        ...getEnvironmentVariables(),
-        ...(env ?? {}),
-      },
+      withEnvironmentVariables(env),
       false,
       log_file
     );
@@ -147,11 +141,30 @@ export async function createWine(options: {
     return "Z:" + `${absPath}`.replaceAll("/", "\\");
   }
 
-  function getEnvironmentVariables() {
+  const useMsync = options.distro.attributes.supportsMsync === true;
+
+  function getEnvironmentVariables(): { [key: string]: string } {
     return {
       WINEDEBUG: "fixme-all,err-unwind,+timestamp",
       WINEPREFIX: options.prefix,
+      ...(useMsync ? { WINEMSYNC: "1" } : {}),
     };
+  }
+
+  /**
+   * The wineserver and all of its clients must agree on the sync mechanism,
+   * otherwise ntdll aborts ("Server is running with WINEMSYNC but this
+   * process is not"). With MSync, it is used for every process of the prefix
+   * (registry scripts, wineserver -k/-w, all games of a shared prefix), and a
+   * per-call WINEESYNC request is dropped.
+   */
+  function withEnvironmentVariables(env?: { [key: string]: string }) {
+    const merged = { ...getEnvironmentVariables(), ...(env ?? {}) };
+    if (useMsync) {
+      merged.WINEMSYNC = "1";
+      delete merged.WINEESYNC;
+    }
+    return merged;
   }
 
   async function openCmdWindow({ gameDir }: { gameDir: string }) {

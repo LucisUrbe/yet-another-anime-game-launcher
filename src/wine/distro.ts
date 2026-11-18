@@ -6,6 +6,11 @@ import { D3DMETAL_RUNTIME_ID, D3DMETAL_RUNTIME_URL } from "./d3dmetal";
 export interface WineDistributionAttributes {
   renderBackend: "dxmt" | "d3dmetal";
   supportsD3d12: boolean;
+  /**
+   * Wine has CrossOver's MSync (Mach semaphore sync). When set, every Wine
+   * process of the prefix runs with WINEMSYNC=1.
+   */
+  supportsMsync: boolean;
   winePath: string; // Path to the wine directory inside the archive
 }
 
@@ -27,6 +32,7 @@ const YAAGL_BUILTIN_WINE: WineDistribution[] = [
       "sha-256=89fa7e90fb626523a90d5867a03c6be785d017176739c6320a3b86c7838c3a35",
     attributes: {
       renderBackend: "dxmt",
+      supportsMsync: true,
       winePath: "wine",
     },
   },

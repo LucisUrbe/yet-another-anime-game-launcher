@@ -138,7 +138,12 @@ const DXMT_FILES_WITH_UNIXLIB = [
   "nvngx.dll",
 ];
 
-const CURRENT_DXMT_VERSION = "654f547";
+const DXMT_COMMIT = "0df86108348bab2aaa5c4610a5eb63a9de9047ac";
+const CURRENT_DXMT_VERSION = DXMT_COMMIT.slice(0, 7);
+// CI artifact of 3Shain/dxmt main (run 42785253423), served by nightly.link.
+// GitHub expires the artifact on 2027-02-08: mirror it to a release by then.
+const DXMT_ARCHIVE_URL =
+  "https://nightly.link/3Shain/dxmt/actions/artifacts/13749877252.zip";
 
 export async function* checkAndDownloadDXMT(aria2: Aria2): CommonUpdateProgram {
   if (
@@ -151,9 +156,9 @@ export async function* checkAndDownloadDXMT(aria2: Aria2): CommonUpdateProgram {
   await rmrf_dangerously(resolve(`./dxmt`));
   await mkdirp("./dxmt");
   yield ["setStateText", "DOWNLOADING_ENVIRONMENT"];
-  const archiveName = "dxmt-654f547ffab4e0c395ee368aad52bb4586b04576.zip";
+  const archiveName = `dxmt-${DXMT_COMMIT}.zip`;
   for await (const progress of aria2.doStreamingDownload({
-    uri: `https://github.com/yaagl/anime-game-wine/releases/download/dxmt-654f547/${archiveName}`,
+    uri: DXMT_ARCHIVE_URL,
     absDst: resolve(`./dxmt/${archiveName}`),
   })) {
     yield [
@@ -177,7 +182,7 @@ export async function* checkAndDownloadDXMT(aria2: Aria2): CommonUpdateProgram {
     // yield ["setProgress", (dec / total) * 100]; // optional progress
   }
 
-  const tarName = "dxmt-654f547ffab4e0c395ee368aad52bb4586b04576.tar.gz";
+  const tarName = `dxmt-${DXMT_COMMIT}.tar.gz`;
 
   await exec([
     "tar",
@@ -187,7 +192,7 @@ export async function* checkAndDownloadDXMT(aria2: Aria2): CommonUpdateProgram {
     resolve("./dxmt"),
   ]);
 
-  const extractedFolder = "654f547ffab4e0c395ee368aad52bb4586b04576";
+  const extractedFolder = DXMT_COMMIT;
 
   await exec([
     "sh",
