@@ -61,7 +61,7 @@ export const zh_CN = {
 
   SETTING: "设置",
   SETTING_WINE_VERSION: "Wine 版本",
-  SETTING_ASYNC_DXVK: "DXVK Shader异步编译",
+  SETTING_ASYNC_DXVK: "DXVK 着色器异步编译",
   SETTING_ENABLED: "启用",
   SETTING_DXVK_HUD: "DXVK HUD",
   SETTING_DXVK_HUD_NONE: "不显示",
@@ -75,8 +75,8 @@ export const zh_CN = {
   SETTING_SAVE: "保存",
   SETTING_CANCEL: "取消",
 
-  SETTING_GAME_INSTALL_DIR: "游戏安装路径",
   SETTING_CHECK_INTEGRITY: "检查文件完整性",
+  SETTING_GAME_INSTALL_DIR: "游戏安装路径",
 
   SETTING_WINE_VERSION_CONFIRM: "点击确认修改",
   SETTING_QUICK_ACTIONS: "快速操作",
@@ -110,20 +110,19 @@ export const zh_CN = {
   COMMUNITY_WINE_ALERT:
     "当前选择为社区版本，此版本不受官方支持，请不要报告任何问题",
 
-  SETTING_BLOCK_NET: "Launch Fix(block hosts)",
-  SETTING_TIMEOUT_FIX: "Timeout Fix",
+  SETTING_BLOCK_NET: "启动修复（hosts 屏蔽）",
+  SETTING_TIMEOUT_FIX: "超时修复",
   SETTING_D3D12: "DirectX 12 (D3DMetal)",
   SETTING_D3D12_RUN:
     "使用 DX12 运行（建议使用 macOS 27，不建议 RAM 为 16GB 或更少的用户使用）",
-  SETTING_LICENSES: "Licenses", // TODO: Translate
+  SETTING_LICENSES: "许可协议",
   SETTING_ENABLE_HDR: "启用 HDR",
 
-  SETTING_PROXY_ENABLED: "Enable HTTP Proxy", // TODO: Translate
-  SETTING_PROXY_HOST: "HTTP Proxy Host", // TODO: Translate
-  SETTING_PROXY_DESC:
-    "The proxy only applies to the game, not to the whole launcher.", // TODO: Translate
+  SETTING_PROXY_ENABLED: "启用 HTTP 代理",
+  SETTING_PROXY_HOST: "HTTP 代理地址",
+  SETTING_PROXY_DESC: "代理仅对游戏生效，不会影响整个启动器。",
 
-  SETTING_TURN_ON_STEAM_PATCH: "Enable Steam Patch", // TODO: Translate
+  SETTING_TURN_ON_STEAM_PATCH: "启用 Steam 补丁",
 
   UPDATE_PROMPT_IGNORE: "忽略此更新",
   SETTING_CHECK_UPDATE: "检查 YAAGL 更新",

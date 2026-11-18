@@ -9,6 +9,7 @@
 neutralino.js
 
 node_modules
+pnpm-workspace.yaml
 
 .tmp/
 
